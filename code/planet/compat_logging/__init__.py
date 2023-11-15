@@ -26,6 +26,7 @@ Copyright (C) 2001-2002 Vinay Sajip. All Rights Reserved.
 To use, simply 'import logging' and log away!
 """
 
+
 import sys, os, types, time, string, cStringIO
 
 try:
@@ -48,7 +49,7 @@ __date__    = "26 June 2003"
 # caller stack frame.
 #
 if string.lower(__file__[-4:]) in ['.pyc', '.pyo']:
-    _srcfile = __file__[:-4] + '.py'
+    _srcfile = f'{__file__[:-4]}.py'
 else:
     _srcfile = __file__
 _srcfile = os.path.normcase(_srcfile)
@@ -116,7 +117,7 @@ def getLevelName(level):
     associated with 'level' is returned. Otherwise, the string
     "Level %s" % level is returned.
     """
-    return _levelNames.get(level, ("Level %s" % level))
+    return _levelNames.get(level, f"Level {level}")
 
 def addLevelName(level, levelName):
     """
@@ -202,18 +203,11 @@ class LogRecord:
         self.created = ct
         self.msecs = (ct - long(ct)) * 1000
         self.relativeCreated = (self.created - _startTime) * 1000
-        if thread:
-            self.thread = thread.get_ident()
-        else:
-            self.thread = None
-        if hasattr(os, 'getpid'):
-            self.process = os.getpid()
-        else:
-            self.process = None
+        self.thread = thread.get_ident() if thread else None
+        self.process = os.getpid() if hasattr(os, 'getpid') else None
 
     def __str__(self):
-        return '<LogRecord: %s, %s, %s, %s, "%s">'%(self.name, self.levelno,
-            self.pathname, self.lineno, self.msg)
+        return f'<LogRecord: {self.name}, {self.levelno}, {self.pathname}, {self.lineno}, "{self.msg}">'
 
     def getMessage(self):
         """
@@ -298,10 +292,7 @@ class Formatter:
         default as described above. Allow for specialized date formatting with
         the optional datefmt argument (if omitted, you get the ISO8601 format).
         """
-        if fmt:
-            self._fmt = fmt
-        else:
-            self._fmt = "%(message)s"
+        self._fmt = fmt if fmt else "%(message)s"
         self.datefmt = datefmt
 
     def formatTime(self, record, datefmt=None):
@@ -324,11 +315,9 @@ class Formatter:
         """
         ct = self.converter(record.created)
         if datefmt:
-            s = time.strftime(datefmt, ct)
-        else:
-            t = time.strftime("%Y-%m-%d %H:%M:%S", ct)
-            s = "%s,%03d" % (t, record.msecs)
-        return s
+            return time.strftime(datefmt, ct)
+        t = time.strftime("%Y-%m-%d %H:%M:%S", ct)
+        return "%s,%03d" % (t, record.msecs)
 
     def formatException(self, ei):
         """
@@ -383,10 +372,7 @@ class BufferingFormatter:
         Optionally specify a formatter which will be used to format each
         individual record.
         """
-        if linefmt:
-            self.linefmt = linefmt
-        else:
-            self.linefmt = _defaultFormatter
+        self.linefmt = linefmt if linefmt else _defaultFormatter
 
     def formatHeader(self, records):
         """
@@ -406,7 +392,7 @@ class BufferingFormatter:
         """
         rv = ""
         if len(records) > 0:
-            rv = rv + self.formatHeader(records)
+            rv += self.formatHeader(records)
             for record in records:
                 rv = rv + self.linefmt.format(record)
             rv = rv + self.formatFooter(records)
@@ -468,7 +454,7 @@ class Filterer:
         """
         Add the specified filter to this handler.
         """
-        if not (filter in self.filters):
+        if filter not in self.filters:
             self.filters.append(filter)
 
     def removeFilter(self, filter):
@@ -486,12 +472,7 @@ class Filterer:
         this and the record is then dropped. Returns a zero value if a record
         is to be dropped, else non-zero.
         """
-        rv = 1
-        for f in self.filters:
-            if not f.filter(record):
-                rv = 0
-                break
-        return rv
+        return next((0 for f in self.filters if not f.filter(record)), 1)
 
 #---------------------------------------------------------------------------
 #   Handler classes and functions
@@ -528,10 +509,7 @@ class Handler(Filterer):
         """
         Acquire a thread lock for serializing access to the underlying I/O.
         """
-        if thread:
-            self.lock = thread.allocate_lock()
-        else:
-            self.lock = None
+        self.lock = thread.allocate_lock() if thread else None
 
     def acquire(self):
         """
@@ -560,10 +538,7 @@ class Handler(Filterer):
         If a formatter is set, use it. Otherwise, use the default formatter
         for the module.
         """
-        if self.formatter:
-            fmt = self.formatter
-        else:
-            fmt = _defaultFormatter
+        fmt = self.formatter if self.formatter else _defaultFormatter
         return fmt.format(record)
 
     def emit(self, record):
@@ -984,10 +959,7 @@ class Logger(Filterer):
         Low-level logging routine which creates a LogRecord and then calls
         all the handlers of this logger to handle the record.
         """
-        if _srcfile:
-            fn, lno = self.findCaller()
-        else:
-            fn, lno = "<unknown file>", 0
+        fn, lno = self.findCaller() if _srcfile else ("<unknown file>", 0)
         if exc_info:
             exc_info = sys.exc_info()
         record = self.makeRecord(self.name, level, fn, lno, msg, args, exc_info)
@@ -1007,7 +979,7 @@ class Logger(Filterer):
         """
         Add the specified handler to this logger.
         """
-        if not (hdlr in self.handlers):
+        if hdlr not in self.handlers:
             self.handlers.append(hdlr)
 
     def removeHandler(self, hdlr):
@@ -1035,10 +1007,7 @@ class Logger(Filterer):
                 found = found + 1
                 if record.levelno >= hdlr.level:
                     hdlr.handle(record)
-            if not c.propagate:
-                c = None    #break out
-            else:
-                c = c.parent
+            c = None if not c.propagate else c.parent
         if (found == 0) and not self.manager.emittedNoHandlerWarning:
             sys.stderr.write("No handlers could be found for logger"
                              " \"%s\"\n" % self.name)
@@ -1113,10 +1082,7 @@ def getLogger(name=None):
 
     If no name is specified, return the root logger.
     """
-    if name:
-        return Logger.manager.getLogger(name)
-    else:
-        return root
+    return Logger.manager.getLogger(name) if name else root
 
 #def getRootLogger():
 #    """

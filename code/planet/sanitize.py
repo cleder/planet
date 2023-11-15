@@ -53,10 +53,7 @@ class _BaseHTMLProcessor(sgmllib.SGMLParser):
 
     def _shorttag_replace(self, match):
         tag = match.group(1)
-        if tag in self.elements_no_end_tag:
-            return '<' + tag + ' />'
-        else:
-            return '<' + tag + '></' + tag + '>'
+        return f'<{tag} />' if tag in self.elements_no_end_tag else f'<{tag}></{tag}>'
         
     def feed(self, data):
         data = self._r_barebang.sub(r'&lt;!\1', data)
@@ -83,7 +80,9 @@ class _BaseHTMLProcessor(sgmllib.SGMLParser):
             if type(value) != type(u''):
                 value = unicode(value, self.encoding)
             uattrs.append((unicode(key, self.encoding), value))
-        strattrs = u''.join([u' %s="%s"' % (key, value) for key, value in uattrs]).encode(self.encoding)
+        strattrs = u''.join([f' {key}="{value}"' for key, value in uattrs]).encode(
+            self.encoding
+        )
         if tag in self.elements_no_end_tag:
             self.pieces.append('<%(tag)s%(strattrs)s />' % locals())
         else:
@@ -135,13 +134,10 @@ class _BaseHTMLProcessor(sgmllib.SGMLParser):
         n = len(rawdata)
         if i == n:
             return None, -1
-        m = self._new_declname_match(rawdata, i)
-        if m:
+        if m := self._new_declname_match(rawdata, i):
             s = m.group()
             name = s.strip()
-            if (i + len(s)) == n:
-                return None, -1  # end of buffer
-            return name.lower(), m.end()
+            return (None, -1) if (i + len(s)) == n else (name.lower(), m.end())
         else:
             self.handle_data(rawdata)
 #            self.updatepos(declstartpos, i)
@@ -313,20 +309,20 @@ def _ebcdic_to_ascii(s):
     return s.translate(_ebcdic_to_ascii_map)
 
 def _startswithbom(text, bom):
-    for i, c in enumerate(bom):
-        if c == '#':
-            if text[i] == '\x00':
-                return False
-        else:
-            if text[i] != c:
-                return False
-    return True
+    return not any(
+        c == '#' and text[i] == '\x00' or c != '#' and text[i] != c
+        for i, c in enumerate(bom)
+    )
 
 def _detectbom(text, bom_map=unicode_bom_map):
-    for bom, encoding in bom_map.iteritems():
-        if _startswithbom(text, bom):
-            return encoding
-    return None
+    return next(
+        (
+            encoding
+            for bom, encoding in bom_map.iteritems()
+            if _startswithbom(text, bom)
+        ),
+        None,
+    )
 
 def characters(text, isXML=False, guess=None):
     """

@@ -56,10 +56,7 @@ def print_keys(item, title):
         print "    %-*s  %s" % (key_len, key, fit_str(value, 74 - key_len))
 
 def fit_str(string, length):
-    if len(string) <= length:
-        return string
-    else:
-        return string[:length-4] + " ..."
+    return string if len(string) <= length else f"{string[:length - 4]} ..."
 
 
 if __name__ == "__main__":
