@@ -3,11 +3,7 @@
 import sys
 import ConfigParser
 
-if len(sys.argv) > 1:
-    filename = sys.argv[1]
-else:
-    filename = 'config.ini'
-    
+filename = sys.argv[1] if len(sys.argv) > 1 else 'config.ini'
 oconfig = ConfigParser.RawConfigParser()
 oconfig.read(filename)
 
@@ -21,7 +17,7 @@ with open(filename, 'wb') as fd:
         for (key, value) in oconfig._defaults.items():
             fd.write("%s = %s\n" % (key, str(value).replace('\n', '\n\t')))
         fd.write("\n")
-    
+
     result = {}
     for section in sorted(oconfig._sections):
         if section == 'Planet':
@@ -35,12 +31,12 @@ with open(filename, 'wb') as fd:
                     result[value.replace('"', '')] = section
         if section == 'Planet':
             fd.write("\n")
-    
+
     for key, value in sorted(result.items()):
         fd.write("[%s]\n" % value)
         name = key
         if "'" in key:
-            name = '"%s"' % key
+            name = f'"{key}"'
         fd.write("name = %s\n" % name)
         fd.write("\n")
 

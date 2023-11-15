@@ -275,10 +275,8 @@ class TemplateManager:
             else:
                 raise TemplateError, "BUG: bad lock in lock_file"
         elif LOCKTYPE == LOCKTYPE_MSVCRT:
-            if lock == LOCK_SH:
+            if lock in [LOCK_SH, LOCK_EX]:
                 # msvcrt does not support shared locks :-(
-                msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
-            elif lock == LOCK_EX:
                 msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
             elif lock == LOCK_UN:
                 msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
@@ -301,11 +299,8 @@ class TemplateManager:
             uptodate.
             @hidden
         """
-        filename = file + "c"   # "template.tmplc"
-        if os.path.isfile(filename):
-            return 1
-        else:
-            return 0
+        filename = f"{file}c"
+        return 1 if os.path.isfile(filename) else 0
         
     def load_precompiled(self, file):
         """ Load precompiled template from disk.
@@ -490,16 +485,16 @@ class TemplateProcessor:
         if self.is_ordinary_var(value):
             # template top-level ordinary variable
             if not var.islower():
-                raise TemplateError, "Invalid variable name '%s'." % var
+                raise (TemplateError, f"Invalid variable name '{var}'.")
         elif type(value) == ListType:
             # template top-level loop
             if var != var.capitalize():
-                raise TemplateError, "Invalid loop name '%s'." % var
+                raise (TemplateError, f"Invalid loop name '{var}'.")
         else:
             raise TemplateError, "Value of toplevel variable '%s' must "\
-                                 "be either a scalar or a list." % var
+                                     "be either a scalar or a list." % var
         self._vars[var] = value
-        self.DEB("VALUE SET: " + str(var))
+        self.DEB(f"VALUE SET: {str(var)}")
         
     def reset(self, keep_data=0):
         """ Reset the template data.

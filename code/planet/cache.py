@@ -49,18 +49,11 @@ class CachedInfo:
     def cache_key(self, key):
         """Return the cache key name for the given key."""
         key = key.replace(" ", "_")
-        if self._root:
-            return key
-        else:
-            return self._id + " " + key
+        return key if self._root else f"{self._id} {key}"
 
     def cache_read(self):
         """Read information from the cache."""
-        if self._root:
-            keys_key = " keys"
-        else:
-            keys_key = self._id
-
+        keys_key = " keys" if self._root else self._id
         if self._cache.has_key(keys_key):
             keys = self._cache[keys_key].split(" ")
         else:
@@ -71,7 +64,7 @@ class CachedInfo:
             if not self._cached.has_key(key) or self._cached[key]:
                 # Key either hasn't been loaded, or is one for the cache
                 self._value[key] = self._cache[cache_key]
-                self._type[key] = self._cache[cache_key + " type"]
+                self._type[key] = self._cache[f"{cache_key} type"]
                 self._cached[key] = 1
 
     def cache_write(self, sync=1):
@@ -85,39 +78,30 @@ class CachedInfo:
                 if self._cache.has_key(cache_key):
                     # Non-cached keys need to be cleared
                     del(self._cache[cache_key])
-                    del(self._cache[cache_key + " type"])
+                    del self._cache[f"{cache_key} type"]
                 continue
 
             keys.append(key)
             self._cache[cache_key] = self._value[key]
-            self._cache[cache_key + " type"] = self._type[key]
+            self._cache[f"{cache_key} type"] = self._type[key]
 
-        if self._root:
-            keys_key = " keys"
-        else:
-            keys_key = self._id
-
+        keys_key = " keys" if self._root else self._id
         self._cache[keys_key] = " ".join(keys)
         if sync:
             self._cache.sync()
 
     def cache_clear(self, sync=1):
         """Remove information from the cache."""
-        if self._root:
-            keys_key = " keys"
-        else:
-            keys_key = self._id
-
-        if self._cache.has_key(keys_key):
-            keys = self._cache[keys_key].split(" ")
-            del(self._cache[keys_key])
-        else:
+        keys_key = " keys" if self._root else self._id
+        if not self._cache.has_key(keys_key):
             return
 
+        keys = self._cache[keys_key].split(" ")
+        del(self._cache[keys_key])
         for key in keys:
             cache_key = self.cache_key(key)
             del(self._cache[cache_key])
-            del(self._cache[cache_key + " type"])
+            del self._cache[f"{cache_key} type"]
 
         if sync:
             self._cache.sync()
@@ -142,19 +126,18 @@ class CachedInfo:
         key = key.replace(" ", "_")
 
         try:
-            func = getattr(self, "set_" + key)
+            func = getattr(self, f"set_{key}")
         except AttributeError:
             pass
         else:
             return func(key, value)
 
-        if value == None:
+        if value is None:
             return self.set_as_null(key, value)
-        else:
-            try:
-                return self.set_as_string(key, value)
-            except TypeError:
-                return self.set_as_date(key, value)
+        try:
+            return self.set_as_string(key, value)
+        except TypeError:
+            return self.set_as_date(key, value)
 
     def get(self, key):
         """Return the value of the given key.
@@ -165,14 +148,14 @@ class CachedInfo:
         key = key.replace(" ", "_")
 
         try:
-            func = getattr(self, "get_" + key)
+            func = getattr(self, f"get_{key}")
         except AttributeError:
             pass
         else:
             return func(key)
 
         try:
-            func = getattr(self, "get_as_" + self._type[key])
+            func = getattr(self, f"get_as_{self._type[key]}")
         except AttributeError:
             pass
         else:
@@ -221,7 +204,7 @@ class CachedInfo:
             raise KeyError, key
 
         value = self._value[key]
-        return tuple([ int(i) for i in value.split(" ") ])
+        return tuple(int(i) for i in value.split(" "))
 
     def set_as_null(self, key, value, cached=1):
         """Set the key to the null value.
@@ -296,11 +279,10 @@ def utf8(value):
     """Return the value as a UTF-8 string."""
     if type(value) == type(u''):
         return value.encode("utf-8")
-    else:
+    try:
+        return unicode(value, "utf-8").encode("utf-8")
+    except UnicodeError:
         try:
-            return unicode(value, "utf-8").encode("utf-8")
+            return unicode(value, "iso-8859-1").encode("utf-8")
         except UnicodeError:
-            try:
-                return unicode(value, "iso-8859-1").encode("utf-8")
-            except UnicodeError:
-                return unicode(value, "ascii", "replace").encode("utf-8")
+            return unicode(value, "ascii", "replace").encode("utf-8")

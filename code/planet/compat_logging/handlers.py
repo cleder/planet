@@ -84,11 +84,11 @@ class RotatingFileHandler(logging.FileHandler):
                     if os.path.exists(dfn):
                         os.remove(dfn)
                     os.rename(sfn, dfn)
-            dfn = self.baseFilename + ".1"
+            dfn = f"{self.baseFilename}.1"
             if os.path.exists(dfn):
                 os.remove(dfn)
             os.rename(self.baseFilename, dfn)
-            #print "%s -> %s" % (self.baseFilename, dfn)
+                #print "%s -> %s" % (self.baseFilename, dfn)
         self.stream = open(self.baseFilename, "w")
 
     def emit(self, record):
@@ -157,7 +157,7 @@ class SocketHandler(logging.Handler):
             while left > 0:
                 sent = self.sock.send(s[sentsofar:])
                 sentsofar = sentsofar + sent
-                left = left - sent
+                left -= sent
 
     def makePickle(self, record):
         """
@@ -232,8 +232,7 @@ class DatagramHandler(SocketHandler):
         The factory method of SocketHandler is here overridden to create
         a UDP socket (SOCK_DGRAM).
         """
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        return s
+        return socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def send(self, s):
         """
@@ -455,11 +454,15 @@ class SMTPHandler(logging.Handler):
     def date_time(self):
         """Return the current date and time formatted for a MIME header."""
         year, month, day, hh, mm, ss, wd, y, z = time.gmtime(time.time())
-        s = "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
-                self.weekdayname[wd],
-                day, self.monthname[month], year,
-                hh, mm, ss)
-        return s
+        return "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
+            self.weekdayname[wd],
+            day,
+            self.monthname[month],
+            year,
+            hh,
+            mm,
+            ss,
+        )
 
     def emit(self, record):
         """
@@ -620,10 +623,7 @@ class HTTPHandler(logging.Handler):
             url = self.url
             data = urllib.urlencode(self.mapLogRecord(record))
             if self.method == "GET":
-                if (string.find(url, '?') >= 0):
-                    sep = '&'
-                else:
-                    sep = '?'
+                sep = '&' if (string.find(url, '?') >= 0) else '?'
                 url = url + "%c%s" % (sep, data)
             h.putrequest(self.method, url)
             if self.method == "POST":

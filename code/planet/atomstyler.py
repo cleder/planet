@@ -29,7 +29,7 @@ class relativize:
         parts = (parts[1]+parts[2]).split('/')
         base = None
         for i in range(1,len(parts)):
-          base = tuple(parts[0:i])
+          base = tuple(parts[:i])
           self.score[base] = self.score.get(base,0) + len(base)
         if base and base not in self.links: self.links.append(base)
 
@@ -77,12 +77,12 @@ def retype(parent):
           # replace html entity defs with utf-8
           chunks=re.split('&(\w+);', node.childNodes[0].nodeValue)
           for i in range(1,len(chunks),2):
-             if chunks[i] in ['amp', 'lt', 'gt', 'apos', 'quot']:
-               chunks[i] ='&' + chunks[i] +';'
-             elif chunks[i] in name2codepoint:
-               chunks[i]=unichr(name2codepoint[chunks[i]])
-             else:
-               chunks[i]='&' + chunks[i] + ';'
+            if chunks[i] in ['amp', 'lt', 'gt', 'apos', 'quot']:
+              chunks[i] = f'&{chunks[i]};'
+            elif chunks[i] in name2codepoint:
+              chunks[i]=unichr(name2codepoint[chunks[i]])
+            else:
+              chunks[i] = f'&{chunks[i]};'
           text = u"".join(chunks)
 
           try:
